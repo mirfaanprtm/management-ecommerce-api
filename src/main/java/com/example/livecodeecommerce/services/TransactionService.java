@@ -1,13 +1,8 @@
 package com.example.livecodeecommerce.services;
 
-import com.example.livecodeecommerce.exceptions.NotFoundException;
-import com.example.livecodeecommerce.models.Price;
-import com.example.livecodeecommerce.models.Transaction;
-import com.example.livecodeecommerce.models.TransactionDetail;
-import com.example.livecodeecommerce.models.requests.DailyReportRequest;
-import com.example.livecodeecommerce.models.requests.MonthlyReportRequest;
-import com.example.livecodeecommerce.models.requests.TransactionDetailRequest;
-import com.example.livecodeecommerce.models.requests.TransactionRequest;
+import com.example.livecodeecommerce.models.*;
+import com.example.livecodeecommerce.models.requests.DailyReport;
+import com.example.livecodeecommerce.models.requests.MonthlyReport;
 import com.example.livecodeecommerce.repository.IPriceRepository;
 import com.example.livecodeecommerce.repository.ITransactionRepository;
 import jakarta.transaction.Transactional;
@@ -17,10 +12,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 @Service
 @Transactional
@@ -28,9 +22,8 @@ public class TransactionService {
     @Autowired
     private ITransactionRepository transactionRepository;
     @Autowired
-    private IPriceRepository priceRepository;
-    @Autowired
-    private ModelMapper modelMapper;
+    private TransactionDetailRepository transactionDetailRepository;
+
     public Transaction createTransactionService(Transaction transaction){
         try {
             return transactionRepository.save(transaction);
@@ -83,21 +76,49 @@ public class TransactionService {
         }
     }
 
-    public List<Transaction> dailyReport(DailyReportRequest dailyReportRequest){
+    public List<DailyReport> dailyReport(String day){
         try {
-            LocalDate date = LocalDate.parse(dailyReportRequest.getDate());
-            List<Transaction> transactionList = transactionRepository.findByTransactionDate(date);
-            return transactionList;
+            Date date = new SimpleDateFormat("yyyy-MM-dd").parse(day);
+            List<Transaction> getTransaction = transactionRepository.findByTransactionDate(date);
+            List<TransactionDetail> findTransaction = transactionDetailRepository.findByTransactionIn(getTransaction);
+
+            Map<Long, DailyReport> dailyReport1 = new HashMap<>();
+            for (TransactionDetail transactionDetail : findTransaction) {
+                Price price = transactionDetail.getPrice();
+                DailyReport dailyReport = dailyReport1.getOrDefault(price.getProduct().getId(), new DailyReport());
+                dailyReport.setQty(transactionDetail.getQty());
+                dailyReport.setDate(day);
+                dailyReport.setProductName(price.getProduct().getName());
+                dailyReport.setPrice(price.getPrice());
+                dailyReport.setTotal((transactionDetail.getQty()*price.getPrice()));
+                dailyReport1.put(price.getId(), dailyReport);
+            }
+            List<DailyReport> reports = new ArrayList<>(dailyReport1.values());
+            return reports;
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage());
         }
     }
-    public List<Transaction> monthlyReport(MonthlyReportRequest monthlyReportRequest){
+    public List<MonthlyReport> monthlyReport(String startDate, String endDate){
         try {
-            LocalDate date = LocalDate.parse(monthlyReportRequest.getStartDate());
-            LocalDate date1 = LocalDate.parse(monthlyReportRequest.getEndDate());
-            List<Transaction> transactionList = transactionRepository.findAllByTransactionDateBetween(date, date1);
-            return transactionList;
+            Date start = new SimpleDateFormat("yyyy-MM-dd").parse(startDate);
+            Date end = new SimpleDateFormat("yyyy-MM-dd").parse(endDate);
+            List<Transaction> getTransaction = transactionRepository.findAllByTransactionDateBetween(start, end);
+            List<TransactionDetail> findTransaction = transactionDetailRepository.findByTransactionIn(getTransaction);
+
+            Map<Integer, MonthlyReport> dailyReport = new HashMap<>();
+            for (TransactionDetail transactionDetail : findTransaction) {
+                Price price = transactionDetail.getPrice();
+                MonthlyReport monthlyReport = dailyReport.getOrDefault(price.getProduct().getId(), new MonthlyReport());
+                monthlyReport.setQty(transactionDetail.getQty());
+                monthlyReport.setDate(transactionDetail.getTransaction().getTransactionDate());
+                monthlyReport.setProductName(price.getProduct().getName());
+                monthlyReport.setPrice(price.getPrice());
+                monthlyReport.setTotal((transactionDetail.getQty())*(price.getPrice()));
+                dailyReport.put(Math.toIntExact(price.getProduct().getId()), monthlyReport);
+            }
+            List<MonthlyReport> reports = new ArrayList<>(dailyReport.values());
+            return reports;
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage());
         }

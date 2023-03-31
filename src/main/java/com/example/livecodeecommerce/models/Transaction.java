@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.util.Date;
 
 @Entity
 @Table(name = "transactions")
@@ -14,11 +15,11 @@ public class Transaction {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
     @Column(name = "transaction_date", nullable = false)
-    private LocalDate transactionDate;
+    private Date transactionDate;
     @ManyToOne
     private User user;
 
-    public Transaction(Long id, LocalDate transactionDate, User user) {
+    public Transaction(Long id, Date transactionDate, User user) {
         this.id = id;
         this.transactionDate = transactionDate;
         this.user = user;

@@ -15,16 +15,15 @@ public class Interceptor implements HandlerInterceptor {
     JwtUtil jwtUtil;
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler){
-//        if(request.getRequestURI().contains("login") || request.getRequestURI().contains("register")){
-//            return true;
-//        }
-//
-//        String token = request.getHeader("Authorization");
-//        if(token == null)
-//            throw new RuntimeException("Token not found...");
-//        String[] bearerToken = token.split(" ");
-//        return jwtUtil.validateToken(bearerToken[1]);
-        return true;
+        if(request.getRequestURI().contains("login") || request.getRequestURI().contains("register")){
+            return true;
+        }
+
+        String token = request.getHeader("Authorization");
+        if(token == null)
+            throw new RuntimeException("Token not found...");
+        String[] bearerToken = token.split(" ");
+        return jwtUtil.validateToken(bearerToken[1]);
     }
 
     public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, @Nullable ModelAndView modelAndView) throws Exception {
